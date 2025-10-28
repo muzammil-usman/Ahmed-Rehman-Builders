@@ -1,67 +1,119 @@
-// components/FeaturedProperties.jsx
-import React, { useEffect } from "react";
+// components/FeaturedProperties.jsx - Also remove mock data
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { MapPin, Bed, Bath, Square, ArrowRight } from "lucide-react";
+import {
+  MapPin,
+  Bed,
+  Bath,
+  Square,
+  ArrowRight,
+  RefreshCw,
+  Database,
+  Plus,
+} from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { getFeaturedProperties } from "../services/propertyService";
 
 gsap.registerPlugin(ScrollTrigger);
 
 const FeaturedProperties = () => {
-  const featuredProperties = [
-    {
-      id: 1,
-      title: "Modern Villa",
-      location: "Beverly Hills, CA",
-      price: "$2,500,000",
-      beds: 4,
-      baths: 3,
-      area: 3200,
-      image:
-        "https://images.unsplash.com/photo-1613977257363-707ba9348227?w=400&h=300&fit=crop",
-    },
-    {
-      id: 2,
-      title: "Luxury Apartment",
-      location: "Downtown, NY",
-      price: "$1,200,000",
-      beds: 3,
-      baths: 2,
-      area: 1800,
-      image:
-        "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400&h=300&fit=crop",
-    },
-    {
-      id: 3,
-      title: "Beach House",
-      location: "Miami, FL",
-      price: "$3,800,000",
-      beds: 5,
-      baths: 4,
-      area: 4500,
-      image:
-        "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=400&h=300&fit=crop",
-    },
-  ];
+  const [properties, setProperties] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [apiStatus, setApiStatus] = useState("checking");
+
+  // Fetch properties from Firebase - NO MOCK DATA
+  const fetchProperties = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const featuredProperties = await getFeaturedProperties();
+
+      if (featuredProperties && featuredProperties.length > 0) {
+        setProperties(featuredProperties);
+        setApiStatus("connected");
+      } else {
+        setProperties([]); // Empty array - no mock data
+        setError("No featured properties found");
+        setApiStatus("empty");
+      }
+    } catch (err) {
+      console.log("Error fetching featured properties:", err.message);
+      setProperties([]); // Empty array - no mock data
+      setError("Failed to load featured properties");
+      setApiStatus("error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    gsap.fromTo(
-      ".property-card",
-      { y: 100, opacity: 0 },
-      {
-        y: 0,
-        opacity: 1,
-        duration: 0.8,
-        stagger: 0.2,
-        scrollTrigger: {
-          trigger: "#featured-properties",
-          start: "top 80%",
-          end: "bottom 20%",
-          toggleActions: "play none none reverse",
-        },
-      }
+    fetchProperties();
+
+    if (properties.length > 0) {
+      gsap.fromTo(
+        ".property-card",
+        { y: 100, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.8,
+          stagger: 0.2,
+          scrollTrigger: {
+            trigger: "#featured-properties",
+            start: "top 80%",
+            end: "bottom 20%",
+            toggleActions: "play none none reverse",
+          },
+        }
+      );
+    }
+  }, [properties]);
+
+  const retryFetch = () => {
+    fetchProperties();
+  };
+
+  // Don't show section if no featured properties
+  if (properties.length === 0 && !loading) {
+    return null; // Hide the entire section
+  }
+
+  if (loading) {
+    return (
+      <section id="featured-properties" className="py-20 px-4 bg-white">
+        <div className="container mx-auto">
+          <h2 className="text-4xl md:text-5xl font-bold text-center text-[#174143] mb-4">
+            Featured Properties
+          </h2>
+          <p className="text-xl text-center text-[#427A76] mb-12 max-w-2xl mx-auto">
+            Loading featured properties...
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[1, 2, 3].map((item) => (
+              <div
+                key={item}
+                className="property-card bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 animate-pulse"
+              >
+                <div className="w-full h-48 bg-gray-300"></div>
+                <div className="p-6">
+                  <div className="h-6 bg-gray-300 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-300 rounded mb-4"></div>
+                  <div className="flex justify-between">
+                    <div className="h-4 bg-gray-300 rounded w-20"></div>
+                    <div className="h-4 bg-gray-300 rounded w-20"></div>
+                    <div className="h-4 bg-gray-300 rounded w-20"></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
     );
-  }, []);
+  }
 
   return (
     <section id="featured-properties" className="py-20 px-4 bg-white">
@@ -72,8 +124,19 @@ const FeaturedProperties = () => {
               Featured Properties
             </h2>
             <p className="text-xl text-[#427A76] max-w-2xl">
-              Explore A & R Builders handpicked selection of premium properties
+              Explore A & R Builders' handpicked selection of premium properties
             </p>
+            {error && apiStatus === "empty" && (
+              <div className="mt-4">
+                <Link
+                  to="/admin"
+                  className="inline-flex items-center gap-2 bg-[#174143] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#427A76] transition-colors cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  Mark Properties as Featured
+                </Link>
+              </div>
+            )}
           </div>
 
           <Link
@@ -86,15 +149,19 @@ const FeaturedProperties = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-          {featuredProperties.map((property) => (
+          {properties.map((property) => (
             <div
               key={property.id}
               className="property-card bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow duration-300 border border-gray-100 cursor-pointer"
             >
               <img
-                src={property.image}
+                src={property.images[0]}
                 alt={property.title}
                 className="w-full h-48 object-cover"
+                onError={(e) => {
+                  e.target.src =
+                    "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&h=300&fit=crop";
+                }}
               />
 
               <div className="p-6">
