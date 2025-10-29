@@ -10,6 +10,7 @@ import {
   query,
   where,
   serverTimestamp,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "../firebase/config";
 
@@ -38,8 +39,8 @@ export const getProperties = async (forceRefresh = false) => {
         location: data.location || "Location not specified",
         price: data.price || "Price not set",
         beds: data.beds || 0,
-        baths: data.baths || 0,
         area: data.area || 0,
+        areaUnit: data.areaUnit || "marla", // ✅ Added areaUnit
         type: data.type || "villa",
         featured: data.featured || false,
         images: data.images || [
@@ -47,6 +48,7 @@ export const getProperties = async (forceRefresh = false) => {
         ],
         description: data.description || "No description available",
         features: data.features || [],
+        order: data.order || 0, // ✅ Added order field
         createdAt: data.createdAt || null,
         updatedAt: data.updatedAt || null,
       };
@@ -54,9 +56,14 @@ export const getProperties = async (forceRefresh = false) => {
       properties.push(property);
     });
 
+    // Sort by order if available
+    const sortedProperties = properties.sort(
+      (a, b) => (a.order || 0) - (b.order || 0)
+    );
+
     // Cache the results
-    propertiesCache = properties;
-    return properties;
+    propertiesCache = sortedProperties;
+    return sortedProperties;
   } catch (error) {
     console.error("Error fetching properties:", error);
     throw error;
@@ -84,8 +91,8 @@ export const getFeaturedProperties = async (forceRefresh = false) => {
         location: data.location || "Location not specified",
         price: data.price || "Price not set",
         beds: data.beds || 0,
-        baths: data.baths || 0,
         area: data.area || 0,
+        areaUnit: data.areaUnit || "marla", // ✅ Added areaUnit
         type: data.type || "villa",
         featured: true,
         images: data.images || [
@@ -93,6 +100,7 @@ export const getFeaturedProperties = async (forceRefresh = false) => {
         ],
         description: data.description || "No description available",
         features: data.features || [],
+        order: data.order || 0, // ✅ Added order field
         createdAt: data.createdAt || null,
         updatedAt: data.updatedAt || null,
       };
@@ -100,9 +108,14 @@ export const getFeaturedProperties = async (forceRefresh = false) => {
       featuredProperties.push(property);
     });
 
+    // Sort by order if available
+    const sortedFeatured = featuredProperties.sort(
+      (a, b) => (a.order || 0) - (b.order || 0)
+    );
+
     // Cache the results
-    featuredCache = featuredProperties;
-    return featuredProperties;
+    featuredCache = sortedFeatured;
+    return sortedFeatured;
   } catch (error) {
     // If direct query fails, use cached properties or empty array
     console.error("Error in featured properties query:", error);
@@ -142,6 +155,7 @@ export const addProperty = async (propertyData) => {
   try {
     const docRef = await addDoc(propertiesCollection, {
       ...propertyData,
+      order: propertyData.order || 0, // ✅ Added order field
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -184,6 +198,33 @@ export const deleteProperty = async (id) => {
     featuredCache = null;
   } catch (error) {
     console.error("Error deleting property:", error);
+    throw error;
+  }
+};
+
+// ✅ NEW FUNCTION: Update property order in bulk
+export const updatePropertyOrder = async (properties) => {
+  try {
+    const batch = writeBatch(db);
+
+    properties.forEach((property) => {
+      const propertyRef = doc(db, "properties", property.id);
+      batch.update(propertyRef, {
+        order: property.order,
+        updatedAt: serverTimestamp(),
+      });
+    });
+
+    await batch.commit();
+
+    // Clear cache after updating order
+    propertiesCache = null;
+    featuredCache = null;
+
+    console.log("Property order updated successfully");
+    return true;
+  } catch (error) {
+    console.error("Error updating property order:", error);
     throw error;
   }
 };

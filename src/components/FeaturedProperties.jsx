@@ -1,4 +1,4 @@
-// components/FeaturedProperties.jsx - Also remove mock data
+// components/FeaturedProperties.jsx - Fixed baths issue
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -23,7 +23,6 @@ const FeaturedProperties = () => {
   const [error, setError] = useState(null);
   const [apiStatus, setApiStatus] = useState("checking");
 
-  // Fetch properties from Firebase - NO MOCK DATA
   const fetchProperties = async () => {
     try {
       setLoading(true);
@@ -35,13 +34,13 @@ const FeaturedProperties = () => {
         setProperties(featuredProperties);
         setApiStatus("connected");
       } else {
-        setProperties([]); // Empty array - no mock data
+        setProperties([]);
         setError("No featured properties found");
         setApiStatus("empty");
       }
     } catch (err) {
       console.log("Error fetching featured properties:", err.message);
-      setProperties([]); // Empty array - no mock data
+      setProperties([]);
       setError("Failed to load featured properties");
       setApiStatus("error");
     } finally {
@@ -72,13 +71,26 @@ const FeaturedProperties = () => {
     }
   }, [properties]);
 
+  // ✅ AREA UNIT DISPLAY FUNCTION - Admin panel ke saath sync
+  const getAreaDisplay = (property) => {
+    // Agar property mein areaUnit hai toh wohi use karo
+    if (property.areaUnit) {
+      return `${property.area} ${property.areaUnit}`;
+    }
+
+    // Fallback: Default "Marla" agar koi unit set nahi hai
+    return `${property.area} Marla`;
+  };
+
+  // ✅ BATHROOMS KO COMPLETELY REMOVE KAR DIYA
+  // Kyonki admin panel mein ab baths field nahi hai
+
   const retryFetch = () => {
     fetchProperties();
   };
 
-  // Don't show section if no featured properties
   if (properties.length === 0 && !loading) {
-    return null; // Hide the entire section
+    return null;
   }
 
   if (loading) {
@@ -179,18 +191,17 @@ const FeaturedProperties = () => {
                   <span className="text-sm">{property.location}</span>
                 </div>
 
+                {/* ✅ BATHROOMS COMPLETELY REMOVED - Sirf 2 items bache hain */}
                 <div className="flex justify-between text-[#427A76] border-t border-gray-200 pt-4">
                   <div className="flex items-center">
                     <Bed className="w-4 h-4 mr-1" />
                     <span>{property.beds} Beds</span>
                   </div>
-                  <div className="flex items-center">
-                    <Bath className="w-4 h-4 mr-1" />
-                    <span>{property.baths} Baths</span>
-                  </div>
+
+                  {/* ✅ AREA UNIT FIXED - Admin panel ke saath sync */}
                   <div className="flex items-center">
                     <Square className="w-4 h-4 mr-1" />
-                    <span>{property.area} sqft</span>
+                    <span>{getAreaDisplay(property)}</span>
                   </div>
                 </div>
 
